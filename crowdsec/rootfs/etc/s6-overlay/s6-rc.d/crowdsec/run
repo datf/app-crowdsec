@@ -1,0 +1,12 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Start CrowdSec
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+# ==============================================================================
+set -e
+
+CONFIG_FILE="/etc/crowdsec/config.yaml"
+
+bashio::log.info "Starting CrowdSec service..."
+
+exec crowdsec -c "${CONFIG_FILE}"

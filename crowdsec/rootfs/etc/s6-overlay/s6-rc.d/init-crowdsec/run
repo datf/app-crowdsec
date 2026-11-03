@@ -1,0 +1,220 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant App: CrowdSec
+# Configures CrowdSec at runtime using cscli
+# ==============================================================================
+set -e
+
+declare config_dir
+declare data_dir
+declare enable_local_api
+declare enable_online_api
+declare custom_hostname
+declare agent_username
+declare agent_password
+
+declare -a collections
+declare -a parsers
+declare -a scenarios
+declare -a postoverflows
+declare -a parsers_to_disable
+declare -a scenarios_to_disable
+
+# --- Default values for local testing ---
+config_dir="/config/.storage/etc/crowdsec"
+data_dir="/config/.storage/lib/crowdsec"
+custom_hostname="localhost"
+
+# collections=("crowdsecurity/home-assistant" "crowdsecurity/linux")
+# parsers=("crowdsecurity/geoip-enrich")
+
+enable_local_api=$(bashio::config 'enable_local_api' 'true')
+enable_online_api=$(bashio::config 'enable_online_api' 'false')
+agent_username=$(bashio::config 'agent_username' '')
+agent_password=$(bashio::config 'agent_password' '')
+
+if bashio::config.has_value 'collections'; then
+    readarray -t collections < <(bashio::config 'collections')
+fi
+if bashio::config.has_value 'parsers'; then
+    readarray -t parsers < <(bashio::config 'parsers')
+fi
+if bashio::config.has_value 'scenarios'; then
+    readarray -t scenarios < <(bashio::config 'scenarios')
+fi
+if bashio::config.has_value 'postoverflows'; then
+    readarray -t postoverflows < <(bashio::config 'postoverflows')
+fi
+if bashio::config.has_value 'parsers_to_disable'; then
+    readarray -t parsers_to_disable < <(bashio::config 'parsers_to_disable')
+fi
+if bashio::config.has_value 'scenarios_to_disable'; then
+    readarray -t scenarios_to_disable < <(bashio::config 'scenarios_to_disable')
+fi
+
+# Ensure crowdsecurity/geoip-enrich parser is included unless explicitly disabled
+geoip_disabled=false
+for p in "${parsers_to_disable[@]}"; do
+    if [[ "${p}" == "crowdsecurity/geoip-enrich" ]]; then
+        geoip_disabled=true
+        break
+    fi
+done
+if [[ "${geoip_disabled}" == "false" ]]; then
+    geoip_found=false
+    for p in "${parsers[@]}"; do
+        if [[ "${p}" == "crowdsecurity/geoip-enrich" ]]; then
+            geoip_found=true
+            break
+        fi
+    done
+    if [[ "${geoip_found}" == "false" ]]; then
+        parsers+=("crowdsecurity/geoip-enrich")
+    fi
+fi
+
+CONFIG_FILE="/etc/crowdsec/config.yaml"
+
+bashio::log.debug "Starting init-crowdsec"
+
+cscli() {
+    command cscli -c "${CONFIG_FILE}" "$@"
+}
+
+bashio::log.debug "Preparing CrowdSec directory structure..."
+mkdir -p "${config_dir}/hub" "${config_dir}/acquis.d" "${config_dir}/notifications" "${config_dir}/patterns" "${data_dir}"
+
+if [[ ! -f "${config_dir}/profiles.yaml" && -f "/etc/crowdsec/profiles.yaml" ]]; then
+    bashio::log.debug "Prestaging profiles.yaml to ${config_dir}"
+    cp /etc/crowdsec/profiles.yaml "${config_dir}/profiles.yaml"
+fi
+if [[ ! -f "${config_dir}/simulation.yaml" && -f "/etc/crowdsec/simulation.yaml" ]]; then
+    bashio::log.debug "Prestaging simulation.yaml to ${config_dir}"
+    cp /etc/crowdsec/simulation.yaml "${config_dir}/simulation.yaml"
+fi
+
+for pdir in "/etc/crowdsec/patterns" "/usr/share/crowdsec/patterns"; do
+    if [[ -d "${pdir}" ]]; then
+        bashio::log.debug "Prestaging grok patterns from ${pdir} to ${config_dir}/patterns"
+        cp -r -u "${pdir}/." "${config_dir}/patterns/" 2>/dev/null \
+            || cp -r -n "${pdir}/." "${config_dir}/patterns/" 2>/dev/null \
+            || cp -r "${pdir}/"* "${config_dir}/patterns/" 2>/dev/null \
+            || true
+    fi
+done
+
+for ndir in "/etc/crowdsec/notifications" "/usr/share/crowdsec/notifications"; do
+    if [[ -d "${ndir}" ]]; then
+        bashio::log.debug "Prestaging notifications from ${ndir} to ${config_dir}/notifications"
+        cp -r -u "${ndir}/." "${config_dir}/notifications/" 2>/dev/null \
+            || cp -r -n "${ndir}/." "${config_dir}/notifications/" 2>/dev/null \
+            || cp -r "${ndir}/"* "${config_dir}/notifications/" 2>/dev/null \
+            || true
+    fi
+done
+
+for ddir in "/var/lib/crowdsec/data" "/usr/share/crowdsec/data"; do
+    if [[ -d "${ddir}" ]]; then
+        for src in "${ddir}"/*; do
+            [[ ! -e "${src}" ]] && continue
+            fname="$(basename "${src}")"
+            [[ "${fname}" == crowdsec.db* ]] && continue
+            if [[ ! -e "${data_dir}/${fname}" ]]; then
+                bashio::log.debug "Prestaging data file ${fname} to ${data_dir}"
+                cp -r "${src}" "${data_dir}/${fname}" 2>/dev/null || true
+            fi
+        done
+    fi
+done
+chmod 644 "${data_dir}"/*.mmdb 2>/dev/null || true
+
+
+local_creds="${config_dir}/local_api_credentials.yaml"
+if [[ "${enable_local_api}" == "true" ]]; then
+    if [[ -f "${local_creds}" ]] && cscli machines list -o json 2>/dev/null | jq -e ".[] | select(.machineId == \"${custom_hostname}\")" >/dev/null 2>&1; then
+        bashio::log.debug "Local agent already registered"
+    else
+        bashio::log.debug "Generating local agent credentials for '${custom_hostname}'..."
+        cscli machines delete "${custom_hostname}" >/dev/null 2>&1 || true
+        cscli machines add "${custom_hostname}" --auto --force -f "${local_creds}"
+    fi
+
+    if [[ -n "${agent_username}" && -n "${agent_password}" ]]; then
+        bashio::log.debug "Registering additional agent '${agent_username}' to Local API..."
+        cscli machines add "${agent_username}" --password "${agent_password}" -f /dev/null --force
+    fi
+fi
+
+
+index_file="${config_dir}/hub/.index.json"
+index_mtime=$(stat -c %Y "${index_file}" 2>/dev/null || echo 0)
+current_time=$(date +%s)
+need_upgrade=false
+
+if [[ ! -f "${index_file}" ]] || (( current_time - index_mtime > 86400 )); then
+    bashio::log.debug "Updating CrowdSec Hub index..."
+    cscli hub update || bashio::log.warning "Hub update failed (offline or network error)"
+    need_upgrade=true
+else
+    bashio::log.debug "CrowdSec Hub index is up to date"
+fi
+
+cscli_install_item() {
+    local itemtype="$1"
+    local item="$2"
+    [[ -z "${item}" ]] && return 0
+    if cscli "${itemtype}" list "${item}" -o json 2>/dev/null | jq -e '.[] | select(.status == "enabled")' >/dev/null 2>&1; then
+        bashio::log.debug "${itemtype} '${item}' is already installed"
+    else
+        bashio::log.debug "Installing ${itemtype}: ${item}..."
+        cscli "${itemtype}" install "${item}" || bashio::log.warning "Failed to install ${itemtype} '${item}'"
+        need_upgrade=true
+    fi
+}
+
+cscli_remove_item() {
+    local itemtype="$1"
+    local item="$2"
+    [[ -z "${item}" ]] && return 0
+    bashio::log.debug "Removing ${itemtype}: ${item}..."
+    cscli "${itemtype}" remove "${item}" --force || bashio::log.warning "Failed to remove ${itemtype} '${item}'"
+}
+
+for col in "${collections[@]}"; do
+    cscli_install_item "collections" "${col}"
+done
+for p in "${parsers[@]}"; do
+    cscli_install_item "parsers" "${p}"
+done
+for s in "${scenarios[@]}"; do
+    cscli_install_item "scenarios" "${s}"
+done
+for po in "${postoverflows[@]}"; do
+    cscli_install_item "postoverflows" "${po}"
+done
+
+for p in "${parsers_to_disable[@]}"; do
+    cscli_remove_item "parsers" "${p}"
+done
+for s in "${scenarios_to_disable[@]}"; do
+    cscli_remove_item "scenarios" "${s}"
+done
+
+if [[ ! -f "${data_dir}/GeoLite2-City.mmdb" || ! -f "${data_dir}/GeoLite2-ASN.mmdb" ]]; then
+    need_upgrade=true
+fi
+
+if [[ "${need_upgrade}" == "true" ]]; then
+    bashio::log.debug "Upgrading CrowdSec Hub items and downloading data files..."
+    cscli hub upgrade || bashio::log.warning "Hub upgrade failed (offline or network error)"
+fi
+
+
+if [[ "${enable_local_api}" == "true" && "${enable_online_api}" == "true" ]]; then
+    online_creds="${config_dir}/online_api_credentials.yaml"
+    if [[ ! -f "${online_creds}" ]]; then
+        bashio::log.debug "Registering instance to CrowdSec Central API (CAPI)..."
+        cscli capi register > "${online_creds}" || bashio::log.warning "Failed to register to Central API"
+    fi
+fi

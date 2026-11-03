@@ -1,0 +1,53 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant App: CrowdSec
+# Configures CrowdSec
+# ==============================================================================
+set -e
+declare log_level
+declare config_dir
+declare data_dir
+declare enable_online_api
+declare enable_prometheus
+
+declare -a trusted_ips=()
+declare -a agents_allowed_ou=()
+declare -a bouncers_allowed_ou=()
+
+config_dir="/config/.storage/etc/crowdsec"
+data_dir="/config/.storage/lib/crowdsec"
+
+log_level=$(bashio::config 'log_level')
+enable_online_api=$(bashio::config 'enable_online_api')
+enable_prometheus=$(bashio::config 'enable_prometheus')
+
+if bashio::config.has_value 'trusted_ips'; then
+    readarray -t trusted_ips < <(bashio::config 'trusted_ips')
+fi
+if bashio::config.has_value 'agents_allowed_ou'; then
+    readarray -t agents_allowed_ou < <(bashio::config 'agents_allowed_ou')
+fi
+if bashio::config.has_value 'bouncers_allowed_ou'; then
+    readarray -t bouncers_allowed_ou < <(bashio::config 'bouncers_allowed_ou')
+fi
+
+bashio::log.debug "Starting init-crowdsec-config"
+
+# Generate CrowdSec configuration
+bashio::var.json \
+    config_dir "${config_dir}" \
+    log_level "${log_level}" \
+    data_dir "${data_dir}" \
+    enable_prometheus "^${enable_prometheus}" \
+    \
+    enable_online_api "^${enable_online_api}" \
+    trusted_ips "^$(bashio::var.json_array "${trusted_ips[@]}")" \
+    agents_allowed_ou "^$(bashio::var.json_array "${agents_allowed_ou[@]}")" \
+    bouncers_allowed_ou "^$(bashio::var.json_array "${bouncers_allowed_ou[@]}")" \
+    | tempio \
+        -template /etc/crowdsec/templates/config.gtpl \
+        -out /etc/crowdsec/config.yaml
+
+bashio::log.debug "RAN CONFIG"
+bashio::log.debug $(cat /etc/crowdsec/config.yaml)
