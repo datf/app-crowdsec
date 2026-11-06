@@ -2,12 +2,16 @@ ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:9.5.2
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
+# Set shell
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 ENV LANG=C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS="yes"
 
 ENV CROWDSEC_VERSION=1.8.2
 
+# hadolint ignore=DL3008,DL3015
 RUN apt-get update && apt-get install -y -q --install-recommends --no-install-suggests \
     ca-certificates \
     tzdata \

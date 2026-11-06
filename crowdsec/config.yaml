@@ -39,7 +39,7 @@ options:
   scenarios: []
   postoverflows: []
   parsers_to_disable:
-  - crowdsecurity/whitelists
+    - crowdsecurity/whitelists
   scenarios_to_disable: []
 schema:
   log_level: list(trace|debug|info|error)
