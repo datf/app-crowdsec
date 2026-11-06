@@ -49,5 +49,4 @@ bashio::var.json \
         -template /etc/crowdsec/templates/config.gtpl \
         -out /etc/crowdsec/config.yaml
 
-bashio::log.debug "RAN CONFIG"
-bashio::log.debug $(cat /etc/crowdsec/config.yaml)
+bashio::log.debug "Generated config file"
