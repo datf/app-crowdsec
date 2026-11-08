@@ -14,9 +14,11 @@ journald: true
 ports:
   8080/tcp: null
   6060/tcp: null
+  7422/tcp: null
 ports_description:
   8080/tcp: CrowdSec Local API
   6060/tcp: Prometheus endpoint
+  7422/tcp: AppSec endpoint
 map:
   - addon_config:rw
 options:
