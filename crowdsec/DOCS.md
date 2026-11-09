@@ -59,6 +59,7 @@ To manage CrowdSec with its command-line tool (`cscli`) and create configuration
 > The official CrowdSec add-on bundles `ttyd` to run a web terminal inside the container itself. However, running a persistent web terminal daemon 24/7 consumes extra memory and system resources. In practice, you only need console access during initial configuration or occasional maintenance. Keeping this add-on lightweight and using the community **Advanced SSH & Web Terminal** gives you full CLI control without the unnecessary background overhead.
 
 #### Setup:
+
 1. In the Home Assistant **Add-on Store**, find **Advanced SSH & Web Terminal** (available by default from the official Community Add-ons repository).
 2. Click **Install**.
 3. In its configuration/info tab, disable **Protection Mode** (required so you can access Docker containers via `docker exec`).
@@ -66,17 +67,21 @@ To manage CrowdSec with its command-line tool (`cscli`) and create configuration
 5. Open its **Web UI** (or connect via SSH).
 
 #### Shell Prompt Legend:
+
 Throughout this guide, commands are prefixed to show where they should be executed:
+
 - `homeassistant$` — Run in the Home Assistant terminal (Advanced SSH).
 - `crowdsec#` — Run inside the CrowdSec container shell.
 - `pc$` — Run on your local computer or external test machine.
 
 To enter the CrowdSec container shell from Home Assistant:
+
 ```bash
 homeassistant$ docker exec -it app_91f8a72d_crowdsec bash
 crowdsec#
 ```
-*(To return to Home Assistant, simply type `exit`.)*
+
+_(To return to Home Assistant, simply type `exit`.)_
 
 ---
 
@@ -186,9 +191,9 @@ You should see your bouncer registered with a green checkmark:
 
 ```text
 ────────────────────────────────────────────────────────────────────────────────────────────────────
- Name           IP Address   Valid  Last API pull              Type              Version  Auth Type 
+ Name           IP Address   Valid  Last API pull              Type              Version  Auth Type
 ────────────────────────────────────────────────────────────────────────────────────────────────────
- caddy-bouncer  172.30.32.1  ✔️      2026-11-07T12:34:59+01:00  caddy-cs-bouncer  v0.15.0  api-key   
+ caddy-bouncer  172.30.32.1  ✔️      2026-11-07T12:34:59+01:00  caddy-cs-bouncer  v0.15.0  api-key
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ```
 
@@ -235,11 +240,12 @@ crowdsec# cscli decisions delete --all
 
 ## Community Blocklists & CrowdSec Console
 
-Protecting against local attacks is only part of CrowdSec. You can also block threats *before* they ever reach your network using global intelligence:
+Protecting against local attacks is only part of CrowdSec. You can also block threats _before_ they ever reach your network using global intelligence:
 
 ### 1. Community Blocklist (Central API)
 
 When **Enable Central API** (`enable_online_api: true`) is toggled on in the add-on configuration:
+
 - CrowdSec registers with the Central API (CAPI).
 - It automatically pulls down the community consensus blocklist, representing thousands of active, verified malicious IPs reported by the global CrowdSec community.
 - Your connected bouncers (e.g. Caddy) will deny traffic from those IPs automatically before they can reach your server.
@@ -420,6 +426,7 @@ https://homeassistant.example.com {
 ```
 
 Restart the Caddy Custom add-on. Your Home Assistant instance is now fully protected by:
+
 - **Local IPS**: Detecting failed logins and suspicious scanning patterns.
 - **Community Blocklist**: Blocking verified malicious IPs globally.
 - **AppSec WAF**: Blocking OWASP Top 10 web vulnerabilities and exploit attempts in real time.
@@ -438,41 +445,46 @@ crowdsec#
 Once inside (`crowdsec#`), you can run any `cscli` command directly:
 
 ### Decisions & Alerts (Bans & Threat Detection)
-| Task | Command |
-| :--- | :--- |
-| **View active bans (decisions)** | `cscli decisions list` |
-| **Manually ban an IP** | `cscli decisions add --ip <IP> --duration 24h --reason "manual ban"` |
-| **Unban an IP** | `cscli decisions delete --ip <IP>` |
-| **Delete all active bans** | `cscli decisions delete --all` |
-| **View triggered alerts** | `cscli alerts list` |
-| **Inspect a specific alert** | `cscli alerts inspect <ALERT_ID>` |
+
+| Task                             | Command                                                              |
+| :------------------------------- | :------------------------------------------------------------------- |
+| **View active bans (decisions)** | `cscli decisions list`                                               |
+| **Manually ban an IP**           | `cscli decisions add --ip <IP> --duration 24h --reason "manual ban"` |
+| **Unban an IP**                  | `cscli decisions delete --ip <IP>`                                   |
+| **Delete all active bans**       | `cscli decisions delete --all`                                       |
+| **View triggered alerts**        | `cscli alerts list`                                                  |
+| **Inspect a specific alert**     | `cscli alerts inspect <ALERT_ID>`                                    |
 
 ### Bouncers & Machines (Connected Components & Agents)
-| Task | Command |
-| :--- | :--- |
-| **List registered bouncers** | `cscli bouncers list` |
-| **Register a new bouncer** | `cscli bouncers add <NAME>` |
-| **Remove a bouncer** | `cscli bouncers delete <NAME>` |
-| **List registered machines/agents** | `cscli machines list` |
+
+| Task                                | Command                        |
+| :---------------------------------- | :----------------------------- |
+| **List registered bouncers**        | `cscli bouncers list`          |
+| **Register a new bouncer**          | `cscli bouncers add <NAME>`    |
+| **Remove a bouncer**                | `cscli bouncers delete <NAME>` |
+| **List registered machines/agents** | `cscli machines list`          |
 
 ### Hub Management (Collections, Parsers & Scenarios)
-| Task | Command |
-| :--- | :--- |
-| **List installed Hub items** | `cscli hub list` |
-| **Update Hub index** | `cscli hub update` |
-| **Upgrade installed Hub items** | `cscli hub upgrade` |
-| **List installed collections** | `cscli collections list` |
-| **List installed scenarios** | `cscli scenarios list` |
+
+| Task                            | Command                  |
+| :------------------------------ | :----------------------- |
+| **List installed Hub items**    | `cscli hub list`         |
+| **Update Hub index**            | `cscli hub update`       |
+| **Upgrade installed Hub items** | `cscli hub upgrade`      |
+| **List installed collections**  | `cscli collections list` |
+| **List installed scenarios**    | `cscli scenarios list`   |
 
 ### Diagnostics & Metrics
-| Task | Command |
-| :--- | :--- |
-| **View engine metrics** | `cscli metrics` |
+
+| Task                             | Command             |
+| :------------------------------- | :------------------ |
+| **View engine metrics**          | `cscli metrics`     |
 | **Check configuration validity** | `cscli config show` |
-| **Show Local API status** | `cscli lapi status` |
+| **Show Local API status**        | `cscli lapi status` |
 
 > [!TIP]
 > You can also run single commands directly from the Home Assistant terminal without opening the container shell by prefixing:
+>
 > ```bash
 > homeassistant$ docker exec -it app_91f8a72d_crowdsec cscli <COMMAND>
 > ```
