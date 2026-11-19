@@ -45,7 +45,7 @@ api:
       {{- end }}
     online_client:
       sharing: {{ .enable_online_api }}
-      # credentials_path: "{{ .config_dir }}/online_api_credentials.yaml"
+      credentials_path: "{{ .config_dir }}/online_api_credentials.yaml"
     tls:
       agents_allowed_ou:
         {{- range .agents_allowed_ou }}
