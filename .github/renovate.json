@@ -2,6 +2,9 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["helpers:pinGitHubActionDigests"],
   "rebaseWhen": "behind-base-branch",
+  "baseBranchPatterns": [
+    "main"
+  ],
   "dependencyDashboard": true,
   "labels": ["dependencies", "no-stale"],
   "assigneesFromCodeOwners": true,
