@@ -32,9 +32,11 @@ RUN apt-get update && apt-get install -y -q --install-recommends --no-install-su
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY rootfs /
-
 ENV XDG_CONFIG_HOME=/config
+ENV CROWDSEC_CONFIG_DIR=/config
+ENV CROWDSEC_DATA_DIR=/data
+
+COPY rootfs /
 
 # Build arguments
 ARG BUILD_ARCH

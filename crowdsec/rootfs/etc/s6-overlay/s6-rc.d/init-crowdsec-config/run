@@ -15,8 +15,8 @@ declare -a trusted_ips=()
 declare -a agents_allowed_ou=()
 declare -a bouncers_allowed_ou=()
 
-config_dir="/config/.storage/etc/crowdsec"
-data_dir="/config/.storage/lib/crowdsec"
+config_dir="${CROWDSEC_CONFIG_DIR}"
+data_dir="${CROWDSEC_DATA_DIR}"
 
 log_level=$(bashio::config 'log_level')
 enable_online_api=$(bashio::config 'enable_online_api')

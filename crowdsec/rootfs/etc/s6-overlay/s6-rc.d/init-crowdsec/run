@@ -22,9 +22,9 @@ declare -a parsers_to_disable
 declare -a scenarios_to_disable
 
 # --- Default values for local testing ---
-config_dir="/config/.storage/etc/crowdsec"
-data_dir="/config/.storage/lib/crowdsec"
-custom_hostname="localhost"
+config_dir="${CROWDSEC_CONFIG_DIR}"
+data_dir="${CROWDSEC_DATA_DIR}"
+custom_hostname=$(bashio::app.hostname)
 
 # collections=("crowdsecurity/home-assistant" "crowdsecurity/linux")
 # parsers=("crowdsecurity/geoip-enrich")
