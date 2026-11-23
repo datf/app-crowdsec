@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y -q --install-recommends --no-install-su
     ca-certificates \
     tzdata \
     curl \
-    rsync=3.5.0+ds1-0+deb13u1 \
+    rsync=3.5.0+ds1-0+deb13u2 \
     bash=5.2.37-2+b10 \
     systemd=257.13-1~deb13u1 \
     && curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh?any=true | bash \

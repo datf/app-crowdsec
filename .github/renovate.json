@@ -3,7 +3,9 @@
   "extends": ["helpers:pinGitHubActionDigests"],
   "rebaseWhen": "behind-base-branch",
   "baseBranchPatterns": ["main"],
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "labels": ["dependencies", "no-stale"],
   "assigneesFromCodeOwners": true,
   "commitMessagePrefix": "⬆️",
