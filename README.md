@@ -10,9 +10,8 @@ For the full app documentation, including detailed installation instructions, co
 
 This app is available through a custom repository. To install it:
 
-1. In Home Assistant, go to **Settings** -> **Apps** -> **Install app**, select **Repositories** from the context menu (**⋮**), and add:
-   `https://github.com/datf/hassio-addons`
-2. Search for **Crowdsec** and click **Install**.
+1. Follow [this link](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdatf%2Fhassio-addons) to add the repository and click Add.
+2. Search for **CrowdSec** and click Install.
 3. Review the configuration options, start the app, and set up your log acquisition files and bouncer API keys.
 
 _Please read the [full documentation](crowdsec/DOCS.md) before starting the app to ensure it is configured securely._
